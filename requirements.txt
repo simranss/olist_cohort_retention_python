@@ -1,0 +1,11 @@
+cffi==2.1.1
+cryptography==50.0.2
+numpy==2.5.4
+pandas==3.0.6
+pycparser==3.11
+PyMySQL==1.2.3
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+six==1.17.0
+SQLAlchemy==2.1.4
+typing_extensions==4.16.0
