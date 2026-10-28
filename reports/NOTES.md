@@ -86,6 +86,7 @@ For each issue: how many rows, what you did about it, and whether it affects any
   - delivered status is missing delivered dates: 8
   - delivered status is missing approved and shipped as well: 12 and 2.
   - This data is according to the window though
+  - 1 delivered order has no payment row
 - Duplicate or multi-row cases
   - There are multiple payment rows for one order. Multiple rows per order come from split payments: a voucher plus a card, or several vouchers. The evidence is: vouchers have 5,775 rows for 3,866 orders. Hence, we need to combine (order_id, payment_sequential) to form a PK
   - A similar pattern for reviews. There can be multiple reviews for one order and review is unique across a single order. Hence, the PK is a combination (review_id, order_id)
