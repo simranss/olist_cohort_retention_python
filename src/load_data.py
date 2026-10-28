@@ -6,7 +6,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import URL, Engine, create_engine, text
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 
 TABLES = [
