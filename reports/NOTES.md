@@ -26,10 +26,10 @@
 
   | table       | columns                                         | fix                                                              |
   | ----------- | ----------------------------------------------- | ---------------------------------------------------------------- |
-  | customer    | customer_zip_code_prefix                        | we needed to enforce the str type otherwise it was taking number |
+  | customers   | customer_zip_code_prefix                        | we needed to enforce the str type otherwise it was taking number |
   | products    | product_name_lenght, product_description_lenght | I renamed the columns because well spelling mistake              |
   | sellers     | seller_zip_code_prefix                          | enforce str type otherwise taking as number                      |
-  | geolocation | geolocation_zip_code_prefix                     | enfore as str otherwise taking as number                         |
+  | geolocation | geolocation_zip_code_prefix                     | enforce as str otherwise taking as number                        |
 
   Also, all zip codes are exactly 5 characters
 
@@ -42,7 +42,7 @@
 For each decision: what did you choose, why, and how does it change the results?
 
 - Analysis window
-  - I have used the window as '2017-02' to '2018-08'
+  - I have used the window as Feb 2017 to Aug 2018 (the end is exclusive in the SQL)
   - The reason is that the data is very sparse in 2016 and after 2018-09.
   - The data will only be considered as noise and in fact, might interfere with analysis. Hence, I have not included that data
   - 2016 has 4, 324, and 1 orders. Jan 2017 has 800. From Feb 2017 volume is above 1,700 a month. Sep and Oct 2018 have 16 and 4
@@ -53,7 +53,7 @@ For each decision: what did you choose, why, and how does it change the results?
 - Who counts as one person
   - customer_id should not be considered as one customer.
   - customer_unique_id is the unique customer
-- How reviews and payments get reduced to one row per
+- How reviews and payments get reduced to one row per order
   - Reviews: 551 extra rows share an order_id, so some orders have 2+ reviews. Joining directly would count those orders twice. Decision: not made yet. Candidates: average score, latest score. Plan: run the delivery analysis both ways and report whether they agree.
   - Payments: 103,886 rows for 99,440 orders (split payments). Plan: sum payment_value per order in a CTE before any join.
 
@@ -75,6 +75,7 @@ For each issue: how many rows, what you did about it, and whether it affects any
   | shipped      | 0                | 0               | 1081              |
 
   The 8 delivered orders with no delivery date are excluded from the delivery analysis
+  Scope: orders purchased Feb 2017 to Aug 2018, all statuses.
 
 - Timestamps in the wrong order
 
@@ -82,21 +83,32 @@ For each issue: how many rows, what you did about it, and whether it affects any
   | ---------------- | --------------- | ----------------- | ----------------- |
   | 0                | 1359            | 18                | 0                 |
 
+  The 1359 invalid shipped rows don’t affect purchase-to-delivery time.
+  Scope: orders purchased Feb 2017 to Aug 2018, all statuses.
+
 - Statuses with unexpected null patterns
   - delivered status is missing delivered dates: 8
   - delivered status is missing approved and shipped as well: 12 and 2.
-  - This data is according to the window though
-  - 1 delivered order has no payment row
+  - Scope: orders purchased Feb 2017 to Aug 2018, all statuses.
+  - 1 delivered order has no payment row: bfbd0f9bdef84302105ad712db648a6c. It will drop out of any revenue built from payments
 - Duplicate or multi-row cases
   - There are multiple payment rows for one order. Multiple rows per order come from split payments: a voucher plus a card, or several vouchers. The evidence is: vouchers have 5,775 rows for 3,866 orders. Hence, we need to combine (order_id, payment_sequential) to form a PK
-  - A similar pattern for reviews. There can be multiple reviews for one order and review is unique across a single order. Hence, the PK is a combination (review_id, order_id)
+  - A similar pattern for reviews. There can be multiple reviews for one order. review_id alone repeats (814 duplicate rows), the pair (review_id, order_id) is unique, and 551 extra rows share an order_id Hence, the PK is a combination (review_id, order_id)
+  - Scope: all dates, no window.
 
 ## 4. Results by question
 
 One short block per question, in this order:
 
 - Cohort retention
+  - Cohort set is 92,377 people. 39 customers with a first delivered order before Feb 2017 are excluded from cohorts, verified by a direct query.
+  - Cohort sizes range from 1,628 (Feb 2017) to 7,060 (Nov 2017)
+  - Nov 2017 is a spike: 7,060 vs 4,328 in Oct.
+  - 92,416 people with a delivered order in the window, 2,741 of them repeat buyers, 2.97% (3.07% counting all statuses)
+  - Caveat: this pools people with 1 to 18 months of follow-up (Feb 2017 buyers vs Aug 2018 buyers), so it understates the long-run repeat rate. The cohort view compares cohorts over the same months.
 - Funnel by order status
+  - Status mix: 97.12% of orders in the window are delivered, and shipped, unavailable and canceled are about 0.6% to 1.1% each.
+  - Payments: 99,440 orders have payment rows, there are 103,886 rows, and the per-type distinct counts add up to 101,686
 - Revenue, AOV, categories
 - RFM segments
 - Delivery delay vs review score
@@ -104,9 +116,10 @@ One short block per question, in this order:
 
 ## 5. Dead ends and surprises
 
-- What did you expect that turned out different?
-- What did you try that didn't work, and why?
+- Dead ends: comparing '201701' against '2017-02' as strings let January in and dropped 2018, and putting a SELECT alias in WHERE failed.
+- Surprises: the repeat rate is only about 3%, 1,359 orders were handed to a carrier before approval, and the first-order definition changed some people’s cohort. A person’s first delivered order can be later than their first order of any status, so using delivered-only moved some people into a later cohort
 
 ## 6. Open questions
 
 - What do you still need to check, or want to revisit?
+  - average vs latest review score, and whether the payment total or item price plus freight is the revenue source.
