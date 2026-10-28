@@ -77,3 +77,13 @@ FROM orders
 LEFT JOIN order_payments ON orders.order_id = order_payments.order_id 
 WHERE order_payments.order_id IS NULL;
 
+-- Check: people whose first delivered order is before Feb 2017 but who also ordered inside the window (expect 39)
+SELECT 
+    customers.customer_unique_id                        as customer_unique_id,
+    DATE_FORMAT(MIN(order_purchase_timestamp), '%Y%m')  as cohort_month,
+    DATE_FORMAT(MAX(order_purchase_timestamp), '%Y%m')  as last_month
+FROM orders
+JOIN customers ON orders.customer_id = customers.customer_id
+WHERE orders.order_status = 'delivered'
+GROUP BY customer_unique_id
+HAVING cohort_month < '201702' AND last_month >= '201702' AND last_month < '201809';
