@@ -35,8 +35,8 @@ WITH people AS(
     GROUP BY customers.customer_unique_id
 )
 SELECT
-    COUNT(*)                                AS total_customers,
-    SUM(order_count > 1)                    AS repeat_customers,
+    COUNT(*)                                             AS total_customers,
+    SUM(order_count > 1)                                 AS repeat_customers,
     CONCAT(ROUND(100.0 * AVG(order_count > 1), 2), '%')  AS repeat_pct
 FROM people;
 
